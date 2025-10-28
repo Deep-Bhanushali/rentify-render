@@ -12,66 +12,98 @@ class EmailService {
 
   private initTransporter() {
     if (typeof window === 'undefined' && !this.transporter) {
+      // Check for alternative SMTP service configuration (e.g., SendGrid, Mailgun)
+      const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+      const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+      const smtpSecure = process.env.SMTP_SECURE === 'true';
+
       this.transporter = nodemailer.createTransport({
-        service: 'gmail', // Using Gmail, can be changed to other providers
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure, // Use TLS for port 587, SSL for port 465
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD,
         },
+        // Add timeout and connection options for Render
+        connectionTimeout: 15000, // 15 seconds
+        greetingTimeout: 15000,   // 15 seconds
+        socketTimeout: 60000,     // 60 seconds
+        // Disable IPv6 for better compatibility and handle older ciphers
+        tls: {
+          ciphers: 'HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA',
+          rejectUnauthorized: false // Allow self-signed certificates in development
+        }
       });
     }
   }
 
-  async sendEmail(options: EmailOptions): Promise<void> {
-    try {
-      this.initTransporter();
-      if (!this.transporter) {
-        throw new Error('Transporter not initialized');
+  async sendEmail(options: EmailOptions, retries = 3): Promise<void> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        this.initTransporter();
+        if (!this.transporter) {
+          throw new Error('Transporter not initialized');
+        }
+
+        // Add better error logging
+        console.log(`Attempting to send email (${attempt}/${retries}):`, {
+          to: options.to,
+          subject: options.subject,
+          from: process.env.EMAIL_USER
+        });
+
+        const mailOptions = {
+          from: `"Rentify" <${process.env.EMAIL_USER}>`,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+        };
+
+        const info = await this.transporter.sendMail(mailOptions);
+        console.log('✅ Email sent successfully:', {
+          messageId: info.messageId,
+          to: options.to,
+          subject: options.subject
+        });
+        return info;
+      } catch (error: unknown) {
+        const err = error as { message?: string; code?: string; response?: unknown };
+        lastError = new Error(`Email sending failed: ${err.message || 'Unknown error'}`);
+
+        console.error(`❌ Email sending attempt ${attempt}/${retries} failed:`, {
+          error: err.message,
+          code: err.code,
+          response: err.response,
+          to: options.to,
+          subject: options.subject
+        });
+
+        // Add specific error information
+        if (err.code === 'EAUTH') {
+          console.error('❌ Email authentication failed - check EMAIL_PASSWORD');
+          // Don't retry auth failures
+          break;
+        } else if (err.code === 'ENOTFOUND') {
+          console.error('❌ Email server connection failed');
+        } else if (err.response) {
+          console.error('❌ Email server response:', err.response);
+        }
+
+        // Wait before retrying (exponential backoff)
+        if (attempt < retries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          console.log(`⏳ Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
-
-      // Add better error logging
-      console.log('Attempting to send email:', {
-        to: options.to,
-        subject: options.subject,
-        from: process.env.EMAIL_USER
-      });
-
-      const mailOptions = {
-        from: `"Rentify" <${process.env.EMAIL_USER}>`,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-      };
-
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Email sent successfully:', {
-        messageId: info.messageId,
-        to: options.to,
-        subject: options.subject
-      });
-      return info;
-    } catch (error: any) {
-      console.error('❌ Error sending email:', {
-        error: error.message,
-        code: error.code,
-        response: error.response,
-        to: options.to,
-        subject: options.subject
-      });
-
-      // Add specific error information
-      if (error.code === 'EAUTH') {
-        console.error('❌ Email authentication failed - check EMAIL_PASSWORD');
-      } else if (error.code === 'ENOTFOUND') {
-        console.error('❌ Email server connection failed');
-      } else if (error.response) {
-        console.error('❌ Email server response:', error.response);
-      }
-
-      // Still throw error for proper handling
-      throw new Error(`Email sending failed: ${error.message}`);
     }
+
+    // If we get here, all retries failed
+    throw lastError || new Error('Email sending failed after all retries');
   }
 
   // Email templates

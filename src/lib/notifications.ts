@@ -107,8 +107,16 @@ export class NotificationService {
           html: emailData.html,
           text: emailData.text,
         });
+        console.log('✅ New rental request notification email sent successfully');
       } catch (emailError) {
-        console.error('Error sending new request email:', emailError);
+        console.error('❌ Error sending new request email to product owner:', emailError);
+        // Log additional context for debugging
+        console.error('Email details:', {
+          to: rentalRequest.product.user.email,
+          subject: 'New Rental Request - Action Required',
+          productOwner: rentalRequest.product.user.name,
+          customer: rentalRequest.customer.name
+        });
       }
     } catch (error) {
       console.error('Error creating new request notification:', error);

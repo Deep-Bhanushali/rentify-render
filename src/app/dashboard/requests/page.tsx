@@ -225,13 +225,6 @@ export default function RentalRequestsManagement() {
     }
   };
 
-  // const handleSelectAll = () => {
-  //   if (selectedRequests.length === filteredRequests.length) {
-  //     setSelectedRequests([]);
-  //   } else {
-  //     setSelectedRequests(filteredRequests.map(request => request.id));
-  //   }
-  // };
 
   const getStatusIcon = (status: string) => {
     switch (status) {

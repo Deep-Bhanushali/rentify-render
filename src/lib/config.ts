@@ -6,6 +6,7 @@ export const JWT_EXPIRES_IN = '7d';
 export const DATABASE_URL = process.env.DATABASE_URL;
 
 // Email configuration
+export const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST;
 export const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || '587');
 export const EMAIL_SMTP_USER = process.env.EMAIL_SMTP_USER;
 export const EMAIL_SMTP_PASS = process.env.EMAIL_SMTP_PASS;

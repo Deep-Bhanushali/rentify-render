@@ -208,9 +208,7 @@ export default function DashboardReturnsPage() {
         });
 
         if (rentalResponse.ok && returnItem.rentalRequest) {
-          // Notify the customer that the return is confirmed
-          await NotificationService.notifyReturnConfirmed(returnItem.rentalRequest);
-          console.log(`Return confirmation notification sent to customer: ${returnItem.rentalRequest.customer.email}`);
+          console.log(`Return confirmation notification will be sent to customer: ${returnItem.rentalRequest.customer.email}`);
         }
       }
 

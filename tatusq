@@ -1,0 +1,37 @@
+[33mcommit d0687977b3bbe29ccb3c2f00b0a6eabd8e89d814[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31mdeep/main[m[33m, [m[1;31mdeep/HEAD[m[33m)[m
+Author: Deep Bhanushali <bhanushalideep24@gmail.com>
+Date:   Tue Oct 28 15:01:18 2025 +0530
+
+    fixed email problem
+
+[33mcommit 6b96b8090479f126bcfa788504f603ba51a09f87[m
+Author: Deep Bhanushali <bhanushalideep24@gmail.com>
+Date:   Tue Oct 28 14:48:33 2025 +0530
+
+    second commit
+
+[33mcommit f9f264b68d01afcec7c555292dede2485eab4929[m
+Author: Deep Bhanushali <bhanushalideep24@gmail.com>
+Date:   Tue Oct 28 14:47:01 2025 +0530
+
+    Revert "Update package.json"
+    
+    This reverts commit 9e8eeb31efca4bc8102bf199c76b4838a8038e26.
+
+[33mcommit 823079559c89c5d9a4aeae8b82c8f7fbf65fbee7[m
+Author: Deep Bhanushali <bhanushalideep24@gmail.com>
+Date:   Tue Oct 28 14:13:00 2025 +0530
+
+    first commit
+
+[33mcommit 9e8eeb31efca4bc8102bf199c76b4838a8038e26[m
+Author: This is Mr-DAB <161147802+Deep-Bhanushali@users.noreply.github.com>
+Date:   Tue Oct 28 13:38:20 2025 +0530
+
+    Update package.json
+
+[33mcommit b8ed4385381bd89abc0981b08f4ba441d71ebb8d[m
+Author: Deep Bhanushali <bhanushalideep24@gmail.com>
+Date:   Tue Oct 28 13:31:35 2025 +0530
+
+    first commit

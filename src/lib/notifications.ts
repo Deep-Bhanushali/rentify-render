@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { emailService, EmailService } from './email';
+import { emailApiClient } from './emailApi';
 import { getUserRoom } from './config';
 
 const prisma = new PrismaClient();
@@ -89,9 +90,9 @@ export class NotificationService {
         },
       });
 
-      // Send email to product owner
+      // Send email to product owner via API
       try {
-        const emailData = EmailService.generateNewRentalRequestEmail({
+        await emailApiClient.sendNewRentalRequestEmail({
           recipientName: rentalRequest.product.user.name,
           customerName: rentalRequest.customer.name,
           productTitle: rentalRequest.product.title,
@@ -99,13 +100,7 @@ export class NotificationService {
           endDate: new Date(rentalRequest.end_date).toLocaleDateString(),
           productId: rentalRequest.product_id,
           rentalRequestId: rentalRequest.id,
-        });
-
-        await emailService.sendEmail({
-          to: rentalRequest.product.user.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: rentalRequest.product.user.email,
         });
         console.log('✅ New rental request notification email sent successfully');
       } catch (emailError) {
@@ -140,21 +135,15 @@ export class NotificationService {
         },
       });
 
-      // Send email to customer
+      // Send email to customer via API
       try {
-        const emailData = EmailService.generateRequestApprovedEmail({
+        await emailApiClient.sendRequestApprovedEmail({
           recipientName: rentalRequest.customer.name,
           productTitle: rentalRequest.product.title,
           startDate: new Date(rentalRequest.start_date).toLocaleDateString(),
           endDate: new Date(rentalRequest.end_date).toLocaleDateString(),
           rentalRequestId: rentalRequest.id,
-        });
-
-        await emailService.sendEmail({
-          to: rentalRequest.customer.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: rentalRequest.customer.email,
         });
       } catch (emailError) {
         console.error('Error sending approval email:', emailError);
@@ -179,19 +168,13 @@ export class NotificationService {
         },
       });
 
-      // Send email to customer
+      // Send email to customer via API
       try {
-        const emailData = EmailService.generateRequestRejectedEmail({
+        await emailApiClient.sendRequestRejectedEmail({
           recipientName: rentalRequest.customer.name,
           productTitle: rentalRequest.product.title,
           rentalRequestId: rentalRequest.id,
-        });
-
-        await emailService.sendEmail({
-          to: rentalRequest.customer.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: rentalRequest.customer.email,
         });
       } catch (emailError) {
         console.error('Error sending rejection email:', emailError);
@@ -218,21 +201,15 @@ export class NotificationService {
         },
       });
 
-      // Send email to product owner
+      // Send email to product owner via API
       try {
-        const emailData = EmailService.generatePaymentCompletedEmail({
+        await emailApiClient.sendPaymentCompletedEmail({
           recipientName: payment.rentalRequest.product.user.name,
           customerName: payment.rentalRequest.customer.name,
           productTitle: payment.rentalRequest.product.title,
           amount: payment.amount,
           rentalRequestId: payment.rental_request_id,
-        });
-
-        await emailService.sendEmail({
-          to: payment.rentalRequest.product.user.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: payment.rentalRequest.product.user.email,
         });
       } catch (emailError) {
         console.error('Error sending payment completion email:', emailError);
@@ -260,22 +237,16 @@ export class NotificationService {
         },
       });
 
-      // Send email to customer
+      // Send email to customer via API
       try {
-        const emailData = EmailService.generatePaymentConfirmedEmail({
+        await emailApiClient.sendPaymentConfirmedEmail({
           recipientName: payment.rentalRequest.customer.name,
           productTitle: payment.rentalRequest.product.title,
           amount: payment.amount,
           startDate: new Date(payment.rentalRequest.start_date).toLocaleDateString(),
           endDate: new Date(payment.rentalRequest.end_date).toLocaleDateString(),
           rentalRequestId: payment.rental_request_id,
-        });
-
-        await emailService.sendEmail({
-          to: payment.rentalRequest.customer.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: payment.rentalRequest.customer.email,
         });
       } catch (emailError) {
         console.error('Error sending payment confirmation email:', emailError);
@@ -302,20 +273,14 @@ export class NotificationService {
         },
       });
 
-      // Send email to product owner
+      // Send email to product owner via API
       try {
-        const emailData = EmailService.generateReturnInitiatedEmail({
+        await emailApiClient.sendReturnInitiatedEmail({
           recipientName: rentalRequest.product.user.name,
           customerName: rentalRequest.customer.name,
           productTitle: rentalRequest.product.title,
           rentalRequestId: rentalRequest.id,
-        });
-
-        await emailService.sendEmail({
-          to: rentalRequest.product.user.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: rentalRequest.product.user.email,
         });
       } catch (emailError) {
         console.error('Error sending return initiated email:', emailError);
@@ -341,20 +306,14 @@ export class NotificationService {
         },
       });
 
-      // Send email to customer
+      // Send email to customer via API
       try {
-        const emailData = EmailService.generateReturnConfirmedEmail({
+        await emailApiClient.sendReturnConfirmedEmail({
           recipientName: rentalRequest.customer.name,
           productTitle: rentalRequest.product.title,
           returnDate: new Date(rentalRequest.productReturn?.return_date || new Date()).toLocaleDateString(),
           rentalRequestId: rentalRequest.id,
-        });
-
-        await emailService.sendEmail({
-          to: rentalRequest.customer.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: rentalRequest.customer.email,
         });
       } catch (emailError) {
         console.error('Error sending return confirmation email:', emailError);
@@ -399,11 +358,11 @@ export class NotificationService {
           },
         });
 
-        // Send email to the recipient
+        // Send email to the recipient via API
         try {
           const rentalPeriod = `${new Date(invoice.rentalRequest.start_date).toLocaleDateString()} - ${new Date(invoice.rentalRequest.end_date).toLocaleDateString()}`;
 
-          const emailData = EmailService.generateInvoiceEmail({
+          await emailApiClient.sendInvoiceEmail({
             recipientName: recipientName,
             invoiceNumber: invoice.invoice_number,
             amount: invoice.amount,
@@ -411,13 +370,7 @@ export class NotificationService {
             productTitle: invoice.rentalRequest.product.title,
             rentalPeriod: rentalPeriod,
             invoiceId: invoice.id,
-          });
-
-          await emailService.sendEmail({
-            to: recipientEmail,
-            subject: emailData.subject,
-            html: emailData.html,
-            text: emailData.text,
+            email: recipientEmail,
           });
         } catch (emailError) {
           console.error('Error sending invoice email:', emailError);
@@ -448,19 +401,13 @@ export class NotificationService {
         },
       });
 
-      // Send email to customer
+      // Send email to customer via API
       try {
-        const emailData = EmailService.generateRequestRejectedEmail({
+        await emailApiClient.sendRequestRejectedEmail({
           recipientName: rentalRequest.customer.name,
           productTitle: rentalRequest.product?.title || 'Product',
           rentalRequestId: rentalRequest.id,
-        });
-
-        await emailService.sendEmail({
-          to: rentalRequest.customer.email,
-          subject: emailData.subject,
-          html: emailData.html,
-          text: emailData.text,
+          email: rentalRequest.customer.email,
         });
       } catch (emailError) {
         console.error('Error sending conflicting rejection email:', emailError);
@@ -579,35 +526,27 @@ export class NotificationService {
         });
       }
 
-      // Send email if required
+      // Send email if required via API
       if (shouldEmail) {
         try {
-          let emailData;
           if (newStatus === 'accepted') {
-            emailData = EmailService.generateRequestApprovedEmail({
+            await emailApiClient.sendRequestApprovedEmail({
               recipientName: customer.name,
               productTitle: product.title,
               startDate: new Date(rentalRequest.start_date).toLocaleDateString(),
               endDate: new Date(rentalRequest.end_date).toLocaleDateString(),
               rentalRequestId: rentalRequest.id,
+              email: customer.email,
             });
           } else if (newStatus === 'rejected') {
-            emailData = EmailService.generateRequestRejectedEmail({
+            await emailApiClient.sendRequestRejectedEmail({
               recipientName: customer.name,
               productTitle: product.title,
               rentalRequestId: rentalRequest.id,
+              email: customer.email,
             });
           }
           // Add more email cases as needed
-
-          if (emailData) {
-            await emailService.sendEmail({
-              to: customer.email,
-              subject: emailData.subject,
-              html: emailData.html,
-              text: emailData.text,
-            });
-          }
         } catch (emailError) {
           console.error('Error sending status update email:', emailError);
         }

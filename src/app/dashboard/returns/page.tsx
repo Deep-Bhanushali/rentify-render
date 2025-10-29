@@ -208,9 +208,8 @@ export default function DashboardReturnsPage() {
         });
 
         if (rentalResponse.ok && returnItem.rentalRequest) {
-          // Notify the customer that the return is confirmed
-          await NotificationService.notifyReturnConfirmed(returnItem.rentalRequest);
-          console.log(`Return confirmation notification sent to customer: ${returnItem.rentalRequest.customer.email}`);
+          // Notification will be sent automatically by the API route when rental request status changes to 'completed'
+          console.log(`Return confirmation notification will be sent to customer: ${returnItem.rentalRequest.customer.email}`);
         }
       }
 

@@ -1,117 +1,100 @@
-# Rentify - Rental Marketplace Platform
+# Rentify Email Server
 
-A full-featured rental marketplace built with Next.js, featuring product listings, rental requests, payments via Stripe, and comprehensive notifications.
+A separate email service server for Rentify application, deployed on Vercel to send emails from serverless functions.
 
-## Getting Started
+## Purpose
 
-### Prerequisites
-- Node.js (v18 or higher)
-- PostgreSQL database
-- Gmail account (for email notifications)
-
-### Installation
-
-1. Clone the repository and install dependencies:
-```bash
-npm install
-```
-
-2. Set up your environment variables in `.env`:
-```bash
-# Database
-DATABASE_URL="your-postgresql-connection-string"
-
-# JWT Secret
-JWT_SECRET="your-secret-key"
-
-# Email Configuration (Using Gmail - setup app password)
-EMAIL_USER="your-email@gmail.com"
-EMAIL_PASSWORD="your-app-password"
-
-# Stripe API Keys
-STRIPE_SECRET_KEY="your-stripe-secret-key"
-STRIPE_PUBLISHABLE_KEY="your-stripe-publishable-key"
-STRIPE_WEBHOOK_SECRET="your-stripe-webhook-secret"
-```
-
-3. Set up the database:
-```bash
-npm run prisma:migrate
-npm run db:seed
-```
-
-4. Start the development server:
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### Email Setup
-
-**Using Gmail:**
-1. Enable 2-factor authentication on your Gmail account
-2. Generate an app password: https://support.google.com/accounts/answer/185833
-3. Add the app password to your `.env` file as `EMAIL_PASSWORD`
-
-**Email Notifications:**
-- New rental requests (to product owners)
-- Request approvals/rejections (to customers)
-- Payment confirmations (to both parties)
-- Return confirmations (to customers)
-
-## Project Structure
-
-- `src/app/` - Next.js App Router pages and API routes
-- `src/components/` - Reusable UI components
-- `src/lib/` - Utility functions and services
-- `prisma/` - Database schema and migrations
+The main Rentify application is deployed on Render.com, which doesn't allow sending emails directly from the server. This separate email server handles all email sending via HTTP API calls from the main application.
 
 ## Features
 
-- User authentication and authorization
-- Product listings with image galleries
-- Rental request management
-- Stripe payment integration
-- In-app notifications
-- Email notifications
-- Dashboard analytics
-- Invoice generation and management
+- ✅ Send rental request notifications
+- ✅ Send approval/rejection notifications
+- ✅ Send payment confirmations
+- ✅ Send return notifications
+- ✅ Send invoice emails
+- HTML and plain text email templates
+- SMTP transport with retry logic
+- CORS support
+- Error handling and logging
 
-## Database Schema
+## API Endpoints
 
-Uses Prisma ORM with PostgreSQL. Key models:
-- User (customers and product owners)
-- Product (rental items)
-- RentalRequest (rental bookings)
-- Payment (Stripe transactions)
-- Notification (in-app alerts)
-- Invoice (billing documents)
+### POST /api/email/new-rental-request
+Sends a new rental request notification to product owner.
 
-## API Routes
+### POST /api/email/request-approved
+Sends approval notification to customer.
 
-- Authentication: `/api/auth/login`, `/api/auth/signup`
-- Products: `/api/products`
-- Rental Requests: `/api/rental-requests`
-- Payments: `/api/payments`
-- Notifications: `/api/notifications`
-- Dashboard: `/api/dashboard/*`
+### POST /api/email/request-rejected
+Sends rejection notification to customer.
+
+### POST /api/email/payment-completed
+Sends payment received notification to product owner.
+
+### POST /api/email/payment-confirmed
+Sends payment confirmation to customer.
+
+### POST /api/email/return-initiated
+Sends return initiated notification to product owner.
+
+### POST /api/email/return-confirmed
+Sends return confirmed notification to customer.
+
+### POST /api/email/invoice
+Sends invoice via email.
+
+### GET /health
+Health check endpoint.
+
+## Environment Variables
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+APP_URL=https://your-rentify-app.com
+PORT=3001
+```
 
 ## Deployment
 
+### Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+### Testing Email Functionality
+
+1. Copy `.env.example` to `.env` and fill in your SMTP credentials
+2. Run the email test:
+
+```bash
+npm run test
+```
+
+This will send a test email to dabhanushali@enacton.email to verify your SMTP setup.
+
 ### Vercel Deployment
-The easiest way to deploy is using the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
 
-### Environment Variables for Production
-Update the following for production:
-- `NEXT_PUBLIC_APP_URL` - Your production domain
-- `DATABASE_URL` - Production database connection
-- Email credentials (consider using SendGrid or similar for production)
+1. Create a new project on Vercel
+2. Connect your GitHub repository
+3. Set environment variables in Vercel dashboard
+4. Deploy
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The main Rentify application calls this email server via `emailApiClient`. For example:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```typescript
+await emailApiClient.sendNewRentalRequestEmail({
+  recipientName: "John Doe",
+  customerName: "Jane Smith",
+  productTitle: "MacBook Pro",
+  // ... other data
+  email: "john@example.com"
+});

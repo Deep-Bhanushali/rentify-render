@@ -1,17 +1,13 @@
-import nodemailer from 'nodemailer';
-
-interface EmailOptions {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-}
+require('dotenv').config();
+const nodemailer = require('nodemailer');
 
 class EmailService {
-  private transporter: nodemailer.Transporter | null = null;
+  constructor() {
+    this.transporter = null;
+  }
 
-  private initTransporter() {
-    if (typeof window === 'undefined' && !this.transporter) {
+  initTransporter() {
+    if (!this.transporter) {
       // Check for alternative SMTP service configuration (e.g., SendGrid, Mailgun)
       const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
       const smtpPort = parseInt(process.env.SMTP_PORT || '587');
@@ -25,7 +21,7 @@ class EmailService {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD,
         },
-        // Add timeout and connection options for Render
+        // Add timeout and connection options for better compatibility
         connectionTimeout: 15000, // 15 seconds
         greetingTimeout: 15000,   // 15 seconds
         socketTimeout: 60000,     // 60 seconds
@@ -38,8 +34,8 @@ class EmailService {
     }
   }
 
-  async sendEmail(options: EmailOptions, retries = 3): Promise<void> {
-    let lastError: Error | null = null;
+  async sendEmail(options, retries = 3) {
+    let lastError = null;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
@@ -70,27 +66,26 @@ class EmailService {
           subject: options.subject
         });
         return info;
-      } catch (error: unknown) {
-        const err = error as { message?: string; code?: string; response?: unknown };
-        lastError = new Error(`Email sending failed: ${err.message || 'Unknown error'}`);
+      } catch (error) {
+        lastError = new Error(`Email sending failed: ${error.message || 'Unknown error'}`);
 
         console.error(`❌ Email sending attempt ${attempt}/${retries} failed:`, {
-          error: err.message,
-          code: err.code,
-          response: err.response,
+          error: error.message,
+          code: error.code,
+          response: error.response,
           to: options.to,
           subject: options.subject
         });
 
         // Add specific error information
-        if (err.code === 'EAUTH') {
+        if (error.code === 'EAUTH') {
           console.error('❌ Email authentication failed - check EMAIL_PASSWORD');
           // Don't retry auth failures
           break;
-        } else if (err.code === 'ENOTFOUND') {
+        } else if (error.code === 'ENOTFOUND') {
           console.error('❌ Email server connection failed');
-        } else if (err.response) {
-          console.error('❌ Email server response:', err.response);
+        } else if (error.response) {
+          console.error('❌ Email server response:', error.response);
         }
 
         // Wait before retrying (exponential backoff)
@@ -107,15 +102,7 @@ class EmailService {
   }
 
   // Email templates
-  static generateNewRentalRequestEmail(data: {
-    recipientName: string;
-    customerName: string;
-    productTitle: string;
-    startDate: string;
-    endDate: string;
-    productId: string;
-    rentalRequestId: string;
-  }): { subject: string; html: string; text: string } {
+  generateNewRentalRequestEmail(data) {
     const subject = 'New Rental Request - Action Required';
 
     const html = `
@@ -153,7 +140,7 @@ class EmailService {
 
             <p>Please review and respond to this request as soon as possible. You can approve or reject the request through your dashboard.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}" class="button">View Request in Dashboard</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}" class="button">View Request in Dashboard</a>
 
             <p>If you have any questions about this request, please contact us.</p>
 
@@ -177,7 +164,7 @@ class EmailService {
       Start Date: ${data.startDate}
       End Date: ${data.endDate}
 
-      Please review this request at: ${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}
+      Please review this request at: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}
 
       This email was sent by Rentify.
     `;
@@ -185,13 +172,7 @@ class EmailService {
     return { subject, html, text };
   }
 
-  static generateRequestApprovedEmail(data: {
-    recipientName: string;
-    productTitle: string;
-    startDate: string;
-    endDate: string;
-    rentalRequestId: string;
-  }): { subject: string; html: string; text: string } {
+  generateRequestApprovedEmail(data) {
     const subject = '🎉 Your Rental Request Has Been Approved!';
 
     const html = `
@@ -228,7 +209,7 @@ class EmailService {
 
             <p>You can now proceed with the payment and pickup arrangements. Check your dashboard for any further instructions.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}" class="button">View Request Details</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}" class="button">View Request Details</a>
 
             <p>Enjoy your rental!</p>
 
@@ -251,7 +232,7 @@ class EmailService {
       Start Date: ${data.startDate}
       End Date: ${data.endDate}
 
-      View details at: ${process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}
+      View details at: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}
 
       Happy renting!
       This email was sent by Rentify.
@@ -260,11 +241,7 @@ class EmailService {
     return { subject, html, text };
   }
 
-  static generateRequestRejectedEmail(data: {
-    recipientName: string;
-    productTitle: string;
-    rentalRequestId: string;
-  }): { subject: string; html: string; text: string } {
+  generateRequestRejectedEmail(data) {
     const subject = 'Rental Request Update';
 
     const html = `
@@ -299,7 +276,7 @@ class EmailService {
 
             <p>This could be due to availability conflicts, scheduling issues, or other reasons. You can explore other rental options or contact the product owner for more information.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/products" class="button">Browse Other Products</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/products" class="button">Browse Other Products</a>
 
             <p>Thank you for your understanding.</p>
 
@@ -320,7 +297,7 @@ class EmailService {
 
       Product: ${data.productTitle}
 
-      You can browse other products at: ${process.env.NEXT_PUBLIC_APP_URL}/products
+      You can browse other products at: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/products
 
       Thank you for your understanding.
       This email was sent by Rentify.
@@ -329,13 +306,7 @@ class EmailService {
     return { subject, html, text };
   }
 
-  static generatePaymentCompletedEmail(data: {
-    recipientName: string;
-    customerName: string;
-    productTitle: string;
-    amount: number;
-    rentalRequestId: string;
-  }): { subject: string; html: string; text: string } {
+  generatePaymentCompletedEmail(data) {
     const subject = '💰 Payment Received - Product Rented';
 
     const html = `
@@ -372,7 +343,7 @@ class EmailService {
 
             <p>Your product is now marked as rented. Please ensure you're prepared for the rental period and have communicated pickup/handover arrangements with your customer.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}" class="button">View Rental Details</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}" class="button">View Rental Details</a>
 
             <p>Thank you for using Rentify!</p>
 
@@ -395,7 +366,7 @@ class EmailService {
       Product: ${data.productTitle}
       Amount Received: $${data.amount.toFixed(2)}
 
-      Your product is now rented. View details at: ${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}
+      Your product is now rented. View details at: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${data.rentalRequestId}
 
       Thank you for using Rentify!
     `;
@@ -403,14 +374,7 @@ class EmailService {
     return { subject, html, text };
   }
 
-  static generatePaymentConfirmedEmail(data: {
-    recipientName: string;
-    productTitle: string;
-    amount: number;
-    startDate: string;
-    endDate: string;
-    rentalRequestId: string;
-  }): { subject: string; html: string; text: string } {
+  generatePaymentConfirmedEmail(data) {
     const subject = '✅ Payment Confirmed - Enjoy Your Rental!';
 
     const html = `
@@ -447,7 +411,7 @@ class EmailService {
 
             <p>Enjoy your rental! Please make sure to arrange pickup and return according to the agreed terms. You should have received contact information from the product owner.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}" class="button">View Your Rental</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}" class="button">View Your Rental</a>
 
             <p>If you have any questions about your rental, please don't hesitate to contact us or the product owner.</p>
 
@@ -471,7 +435,7 @@ class EmailService {
       Rental Period: ${data.startDate} to ${data.endDate}
 
       Enjoy your rental!
-      View details at: ${process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}
+      View details at: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/rental-requests/${data.rentalRequestId}
 
       Happy renting!
       This email was sent by Rentify.
@@ -480,12 +444,7 @@ class EmailService {
     return { subject, html, text };
   }
 
-  static generateReturnInitiatedEmail(data: {
-    recipientName: string;
-    customerName: string;
-    productTitle: string;
-    rentalRequestId: string;
-  }): { subject: string; html: string; text: string } {
+  generateReturnInitiatedEmail(data) {
     const subject = 'Return Initiated - Review Required';
 
     const html = `
@@ -521,7 +480,7 @@ class EmailService {
 
             <p>Please review the return details and confirm the return when you receive the product. Once confirmed, the customer will be notified and the product will be available for rent again.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/returns/${data.rentalRequestId}" class="button">Review Return Request</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/returns/${data.rentalRequestId}" class="button">Review Return Request</a>
 
             <p>If you have any questions about this return, please contact the customer directly.</p>
 
@@ -543,7 +502,7 @@ class EmailService {
       Customer: ${data.customerName}
       Product: ${data.productTitle}
 
-      Please review and confirm the return at: ${process.env.NEXT_PUBLIC_APP_URL}/returns/${data.rentalRequestId}
+      Please review and confirm the return at: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/returns/${data.rentalRequestId}
 
       This email was sent by Rentify.
     `;
@@ -551,12 +510,7 @@ class EmailService {
     return { subject, html, text };
   }
 
-  static generateReturnConfirmedEmail(data: {
-    recipientName: string;
-    productTitle: string;
-    returnDate: string;
-    rentalRequestId: string;
-  }): { subject: string; html: string; text: string } {
+  generateReturnConfirmedEmail(data) {
     const subject = '🏠 Return Confirmed - Product Available Again';
 
     const html = `
@@ -592,7 +546,7 @@ class EmailService {
 
             <p>Thank you for returning the product in good condition. Your product is now listed as available and can receive new rental requests.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/products" class="button">View Your Products</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/dashboard/products" class="button">View Your Products</a>
 
             <p>Thank you for using Rentify! We hope you had a great rental experience.</p>
 
@@ -615,7 +569,7 @@ class EmailService {
       Return Date: ${data.returnDate}
 
       Your product is now available for rent again.
-      View your products at: ${process.env.NEXT_PUBLIC_APP_URL}/dashboard/products
+      View your products at: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/dashboard/products
 
       Thank you for using Rentify!
     `;
@@ -623,15 +577,7 @@ class EmailService {
     return { subject, html, text };
   }
 
-  static generateInvoiceEmail(data: {
-    recipientName: string;
-    invoiceNumber: string;
-    amount: number;
-    dueDate: string;
-    productTitle: string;
-    rentalPeriod: string;
-    invoiceId: string;
-  }): { subject: string; html: string; text: string } {
+  generateInvoiceEmail(data) {
     const subject = `Invoice ${data.invoiceNumber} from Rentify`;
 
     const html = `
@@ -678,7 +624,7 @@ class EmailService {
 
             <p>For your records, this invoice can be downloaded from your Rentify dashboard.</p>
 
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/invoices/${data.invoiceId}" class="button">View Invoice Online</a>
+            <a href="${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/invoices/${data.invoiceId}" class="button">View Invoice Online</a>
 
             <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
 
@@ -703,7 +649,7 @@ class EmailService {
       Due Date: ${data.dueDate}
       Total Amount: $${data.amount.toFixed(2)}
 
-      View invoice online: ${process.env.NEXT_PUBLIC_APP_URL}/invoices/${data.invoiceId}
+      View invoice online: ${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/invoices/${data.invoiceId}
 
       If you have any questions, please contact us.
 
@@ -715,5 +661,6 @@ class EmailService {
 }
 
 // Export singleton instance
-export const emailService = new EmailService();
-export { EmailService };
+const emailService = new EmailService();
+
+module.exports = emailService;
